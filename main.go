@@ -164,20 +164,32 @@ func (s *routerServer) resolveRedirectHost(parentCtx context.Context, host strin
 		return "", fmt.Errorf("unpack dns response: %w", err)
 	}
 
+	var cnameTarget string
 	for _, rr := range answer.Answer {
-		a, ok := rr.(*dns.A)
-		if !ok {
-			continue
-		}
+		switch record := rr.(type) {
+		case *dns.CNAME:
+			target := strings.TrimSuffix(record.Target, ".")
+			if target != "" {
+				cnameTarget = target
+			}
+		case *dns.A:
+			if cnameTarget != "" {
+				continue
+			}
 
-		target := strings.TrimSuffix(a.Hdr.Name, ".")
-		if target == "" {
-			continue
+			target := strings.TrimSuffix(record.Hdr.Name, ".")
+			if target == "" {
+				continue
+			}
+			return target, nil
 		}
-		return target, nil
 	}
 
-	return "", fmt.Errorf("no A record in DNS answer for %q", host)
+	if cnameTarget != "" {
+		return cnameTarget, nil
+	}
+
+	return "", fmt.Errorf("no A or CNAME record in DNS answer for %q", host)
 }
 
 func addClientSubnet(msg *dns.Msg, clientIP net.IP) {

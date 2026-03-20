@@ -8,7 +8,7 @@ For each incoming request host:
 2. Add EDNS0 client subnet (ECS) from request source IP.
 3. If `X-Forwarded-For` is present, use the first valid IP from that header for ECS.
 4. Send the packed DNS message to CoreDNS gRPC `DnsService.Query` (`github.com/coredns/coredns/pb`).
-5. Read the first `A` answer and use its owner name as the cache node host.
+5. Read the DNS answer and use the CNAME target when present, otherwise the `A` answer owner name, as the cache node host.
 6. Return `302 Found` with `Location: <scheme>://<cache-node-host><original-path-and-query>`.
 
 ## Configuration
@@ -36,7 +36,7 @@ Then send a request with the desired host:
 curl -i -H 'Host: app.example.com' http://127.0.0.1:8080/some/path
 ```
 
-If CoreDNS returns an `A` record with owner name `node1.frankfurt.node.app.example.com.`,
+If CoreDNS returns a `CNAME` pointing to `node1.frankfurt.node.app.example.com.` or an `A` record with owner name `node1.frankfurt.node.app.example.com.`,
 the response includes:
 
 - Status: `302 Found`
