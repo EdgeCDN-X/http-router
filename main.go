@@ -143,8 +143,8 @@ func loadGRPCTLSCredentials(targetAddr, certFile, keyFile, caFile string) (crede
 }
 
 type routeRequest struct {
-	Domain   string `json:"domain"`
-	SourceIP string `json:"source_ip"`
+	Domain     string `json:"domain"`
+	SourceIP   string `json:"source_ip"`
 	RecordType string `json:"record_type"`
 }
 

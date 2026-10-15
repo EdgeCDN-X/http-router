@@ -4,7 +4,7 @@ Small JSON API that sends a DNS query to CoreDNS over gRPC and returns the parse
 
 For each `POST /route` request:
 
-1. Build a DNS `A` query for `domain` using `github.com/miekg/dns`.
+1. Build a DNS query for `domain` and `record_type` using `github.com/miekg/dns`.
 2. If `source_ip` is provided, add it as an EDNS0 client subnet (ECS) option.
 3. Send the packed DNS message to CoreDNS gRPC `DnsService.Query` (`github.com/coredns/coredns/pb`).
 4. Return the full DNS response (header flags, question, answer, authority, additional, EDNS) as JSON.
@@ -42,6 +42,7 @@ go run . -listen-addr :8080 -coredns-grpc-addr 127.0.0.1:1053
 Request body:
 
 - `domain` (required) the name to resolve. It is converted to an FQDN.
+- `record_type` (optional, default `A`) one of `A`, `AAAA`, `CNAME`, `TXT`, `MX`, `SRV`, or `NS`. Case-insensitive; unsupported types return `400`. SRV names such as `_sip._tcp.example.com` are supported.
 - `source_ip` (optional) a client IPv4 or IPv6 address. It is sent as ECS (`/32` or `/128`).
 
 ```bash
