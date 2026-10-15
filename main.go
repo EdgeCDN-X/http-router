@@ -145,6 +145,28 @@ func loadGRPCTLSCredentials(targetAddr, certFile, keyFile, caFile string) (crede
 type routeRequest struct {
 	Domain   string `json:"domain"`
 	SourceIP string `json:"source_ip"`
+	RecordType string `json:"record_type"`
+}
+
+func queryType(recordType string) (uint16, bool) {
+	switch strings.ToUpper(strings.TrimSpace(recordType)) {
+	case "", "A":
+		return dns.TypeA, true
+	case "AAAA":
+		return dns.TypeAAAA, true
+	case "CNAME":
+		return dns.TypeCNAME, true
+	case "TXT":
+		return dns.TypeTXT, true
+	case "MX":
+		return dns.TypeMX, true
+	case "SRV":
+		return dns.TypeSRV, true
+	case "NS":
+		return dns.TypeNS, true
+	default:
+		return 0, false
+	}
 }
 
 type routeResponse struct {
@@ -234,7 +256,12 @@ func (s *routerServer) handleRoute(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	answer, err := s.queryDNS(r.Context(), domain, sourceIP)
+	qtype, ok := queryType(req.RecordType)
+	if !ok {
+		writeJSON(w, http.StatusBadRequest, errorResponse{Error: "record_type must be A, AAAA, CNAME, TXT, MX, SRV, or NS"})
+		return
+	}
+	answer, err := s.queryDNS(r.Context(), domain, sourceIP, qtype)
 	if err != nil {
 		log.Printf("dns lookup failed for %q: %v", domain, err)
 		writeJSON(w, http.StatusBadGateway, errorResponse{Error: "failed to query DNS"})
@@ -346,9 +373,9 @@ func writeJSON(w http.ResponseWriter, status int, v any) {
 	}
 }
 
-func (s *routerServer) queryDNS(parentCtx context.Context, host string, clientIP net.IP) (*dns.Msg, error) {
+func (s *routerServer) queryDNS(parentCtx context.Context, host string, clientIP net.IP, qtype uint16) (*dns.Msg, error) {
 	msg := new(dns.Msg)
-	msg.SetQuestion(dns.Fqdn(host), dns.TypeA)
+	msg.SetQuestion(dns.Fqdn(host), qtype)
 	msg.RecursionDesired = true
 	addClientSubnet(msg, clientIP)
 
